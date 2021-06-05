@@ -1,1 +1,2 @@
 firebase_admin
+psycopg2_binary
