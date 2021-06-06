@@ -17,7 +17,7 @@ except Exception as err:
     raise Exception("Ошибка подключения к БД", err)
 
 
-def get_location(lat, lng):
+def get_location(location):
     try:
         cursor = connection.cursor()
         query = """SELECT segment_id 
@@ -25,7 +25,7 @@ def get_location(lat, lng):
                    WHERE ST_Distance('POINT({lng} {lat})', coordinates) < {rounding}
                    ORDER BY parent_id
                    LIMIT 1; 
-                """.format(lng=lng, lat=lat, rounding=config["common"]["rounding"])
+                """.format(lng=location["lng"], lat=location["lat"], rounding=config["common"]["rounding"])
         cursor.execute(query)
         raw = cursor.fetchone()
         if raw:
