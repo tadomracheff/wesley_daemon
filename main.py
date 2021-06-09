@@ -5,7 +5,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 import threading
 
-from db.postgres import get_location
+from db.postgres import Postgres
 
 
 def listen_fs():
@@ -24,7 +24,7 @@ def listen_fs():
 
 
 def send(fs_doc):
-    segment_id = get_location(fs_doc.to_dict())
+    segment_id = postgres.get_location(fs_doc.to_dict(), config["common"]["rounding"])
     try:
         packet = "{user}:{segment};".format(user=config["users"][fs_doc.id], segment=segment_id)
         client_socket.send(str.encode(packet))
@@ -35,6 +35,8 @@ def send(fs_doc):
 
 config = configparser.ConfigParser()
 config.read("config/settings.ini")
+
+postgres = Postgres(config["PostgreSQL"])
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind(('localhost', 5001))

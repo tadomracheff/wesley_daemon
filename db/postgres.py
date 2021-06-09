@@ -1,41 +1,41 @@
 import psycopg2
-import configparser
-
-config = configparser.ConfigParser()
-config.read("config/settings.ini")
-
-try:
-    connection = psycopg2.connect(
-        database=config["PostgreSQL"]["database"],
-        user=config["PostgreSQL"]["user"],
-        password=config["PostgreSQL"]["password"],
-        host=config["PostgreSQL"]["host"],
-        port=config["PostgreSQL"]["port"]
-    )
-    print("connect!")
-except Exception as err:
-    raise Exception("Ошибка подключения к БД", err)
+from psycopg2 import Error
 
 
-def get_location(location):
-    try:
-        cursor = connection.cursor()
-        query = """SELECT segment_id 
-                   FROM geozone 
-                   WHERE ST_Distance('POINT({lng} {lat})', coordinates) < {rounding}
-                   ORDER BY parent_id
-                   LIMIT 1; 
-                """.format(lng=location["lng"], lat=location["lat"], rounding=config["common"]["rounding"])
-        cursor.execute(query)
-        raw = cursor.fetchone()
-        if raw:
-            return raw[0]
+class Postgres:
+    def __init__(self, config):
+        try:
+            self.connection = psycopg2.connect(
+                database=config["database"],
+                user=config["user"],
+                password=config["password"],
+                host=config["host"],
+                port=config["port"]
+            )
+            self.cursor = self.connection.cursor()
+            print("Connect")
+        except (Exception, Error) as error:
+            raise Exception("Ошибка подключения к БД", error)
 
-        return 0
-    except Exception as err:
-        print("err", err)
+    def get_location(self, location, rounding):
+        try:
+            query = """SELECT segment_id 
+                       FROM geozone 
+                       WHERE ST_Distance('POINT({lng} {lat})', coordinates) < {rounding}
+                       ORDER BY parent_id
+                       LIMIT 1; 
+                    """.format(lng=location["lng"], lat=location["lat"], rounding=rounding)
+            self.cursor.execute(query)
+            raw = self.cursor.fetchone()
+            if raw:
+                return raw[0]
 
-        return 0
-    finally:
-        if connection:
-            cursor.close()
+            return 0
+        except (Exception, Error) as error:
+            print("err", error)
+            return 0
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.connection:
+            self.cursor.close()
+            self.connection.close()
