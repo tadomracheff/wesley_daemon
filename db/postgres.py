@@ -35,7 +35,7 @@ class Postgres:
             print("err", error)
             return 0
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __del__(self):
         if self.connection:
             self.cursor.close()
             self.connection.close()
