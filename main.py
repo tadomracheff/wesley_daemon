@@ -8,22 +8,22 @@ import threading
 from db.postgres import Postgres
 
 
-def listen_fs():
-    cred = credentials.Certificate('config/serviceAccount.json')
+def listen_firestore():
+    cred = credentials.Certificate(config["Firestore"]["service_account"])
     firebase_admin.initialize_app(cred)
     db = firestore.client()
     callback_done = threading.Event()
 
     def on_snapshot(doc_snapshot, changes, read_time):
         for doc in doc_snapshot:
-            send(doc)
+            send_to_client(doc)
         callback_done.set()
 
-    doc_ref = db.collection("location")
+    doc_ref = db.collection(config["Firestore"]["listen_collection"])
     doc_watch = doc_ref.on_snapshot(on_snapshot)
 
 
-def send(fs_doc):
+def send_to_client(fs_doc):
     segment_id = postgres.get_location(fs_doc.to_dict(), config["common"]["rounding"])
     try:
         packet = "{user}:{segment};".format(user=config["users"][fs_doc.id], segment=segment_id)
@@ -39,11 +39,11 @@ config.read("config/settings.ini")
 postgres = Postgres(config["PostgreSQL"])
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('localhost', 5001))
+server_socket.bind((config["SocketServer"]["host"], int(config["SocketServer"]["port"])))
 server_socket.listen(1)
 (client_socket, address) = server_socket.accept()
 
-listen_fs()
+listen_firestore()
 
 while True:
     pass
