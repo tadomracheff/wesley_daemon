@@ -4,6 +4,8 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 import threading
+import signal
+import sys
 
 from db.postgres import Postgres
 
@@ -32,6 +34,14 @@ def send_to_client(fs_doc):
         print("Error: ", err)
         client_socket.close()
 
+
+def sig_handler(signum, frame):
+    print(signum)
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, sig_handler)
+signal.signal(signal.SIGTERM, sig_handler)
 
 config = configparser.ConfigParser()
 config.read("config/settings.ini")
