@@ -50,7 +50,8 @@ ALTER TABLE public.geozone ADD CONSTRAINT fk_geozone_segment FOREIGN KEY (segmen
 * в файле конфигурации config/settings.ini в блоке Logging прописать параметры для логирования
 
 ### Информация о пользователях
-* в файле конфигурации config/settings.ini в блоке users прописать пользователей в формате <логин_пользователя_в_firestore>=<id_пользователя_для_arduino>
+* в файле конфигурации config/settings.ini в блоке users прописать пользователей в формате <br>
+`<логин_пользователя_в_firestore>=<id_пользователя_для_arduino>`
 
 ## Запуск
 `python3 main.py`
