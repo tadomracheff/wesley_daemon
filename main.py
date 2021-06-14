@@ -8,6 +8,8 @@ from psycopg2 import Error as Psycopg2Error
 import threading
 import signal
 import sys
+import logging
+from time import sleep
 
 from db.postgres import Postgres
 
@@ -16,7 +18,7 @@ def listen_firestore():
     try:
         cred = credentials.Certificate(config["Firestore"]["service_account"])
     except (IOError, ValueError) as error:
-        print(error)
+        logging.critical("Ошибка чтения сертификата Firestore:", error)
         raise FirebaseException.InvalidArgumentError()
 
     firebase_admin.initialize_app(cred)
@@ -38,17 +40,18 @@ def send_to_client(fs_doc):
 
     try:
         client_socket.send(str.encode(packet))
+        logging.info("Пакет {0} отправлен".format(packet))
     except socket.error as error:
-        print("Ошибка при отправке пакета клиенту: ", error)
+        logging.critical("Ошибка при отправке пакета '{0}' клиенту: {1}".format(packet, error))
         client_socket.close()
+        logging.info("Клиентский сокет закрыт")
         signal.raise_signal(signal.SIGPIPE)
 
 
 def sig_handler(signum, frame):
     if signum == signal.SIGPIPE:
-        raise socket.error()
+        raise socket.error("Ошибка при отправке пакета клиенту")
     else:
-        print("Остановлено")
         sys.exit(0)
 
 
@@ -59,26 +62,41 @@ signal.signal(signal.SIGINT, sig_handler)
 signal.signal(signal.SIGTERM, sig_handler)
 
 try:
+    logging.basicConfig(**config["Logging"])
+except Exception as error:
+    print(error)
+    sys.exit(1)
+
+try:
     signal.signal(signal.SIGPIPE, sig_handler)
 
     postgres = Postgres(config["PostgreSQL"])
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((config["SocketServer"]["host"], int(config["SocketServer"]["port"])))
+    logging.info("Открыт сокет {0}".format(server_socket.__str__()))
     server_socket.listen(1)
     (client_socket, address) = server_socket.accept()
+    logging.info("Установлено соединение с {0}".format(client_socket.__str__()))
 
     listen_firestore()
 
     while True:
+        sleep(1)
         pass
 
-except FirebaseException.InvalidArgumentError as error:
-    print("Ошибка подключения к FS")
-except Psycopg2Error as error:
-    print("Ошибка базы данных")
+except (FirebaseException.InvalidArgumentError, Psycopg2Error) as error:
+    pass
 except socket.error as error:
+    logging.critical("Ошибка сокета: {0}".format(error))
     server_socket.close()
-    print("Ошибка сокета", error)
+    logging.info("Серверный сокет закрыт")
 except Exception as error:
-    print("Неотловленное исключение", error)
+    logging.exception(error)
+finally:
+    try:
+        del postgres
+    except NameError as error:
+        logging.error("Ошибка вызова деструктора соединения с БД: {0}".format(error))
+    logging.shutdown()
+    logging.critical("Демон остановлен\n")
