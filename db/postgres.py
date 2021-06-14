@@ -15,7 +15,7 @@ class Postgres:
             self.cursor = self.connection.cursor()
             print("Connect")
         except (Exception, Error) as error:
-            raise Exception("Ошибка подключения к БД", error)
+            raise Error("Ошибка подключения к БД", error)
 
     def get_location(self, location, rounding):
         try:
@@ -36,6 +36,9 @@ class Postgres:
             return 0
 
     def __del__(self):
-        if self.connection:
-            self.cursor.close()
-            self.connection.close()
+        try:
+            if self.connection:
+                self.cursor.close()
+                self.connection.close()
+        except AttributeError as error:
+            print(error)
